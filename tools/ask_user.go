@@ -5,26 +5,18 @@ import (
 	"encoding/json"
 )
 
-// AskUserField represents a form field in a multi-field ask_user prompt.
 type AskUserField struct {
 	Name    string `json:"name"`
 	Label   string `json:"label"`
 	Secret  bool   `json:"secret"`
 	Default string `json:"default"`
 }
-
-// AskUserArgs is the parsed argument structure for the ask_user tool.
 type AskUserArgs struct {
 	Question string         `json:"question"`
 	Options  []string       `json:"options"`
 	Fields   []AskUserField `json:"fields"`
 }
-
-// AskUserCallback is a function the agent layer provides so the tool can
-// pause agent execution and route the question to the TUI.
 type AskUserCallback func(ctx context.Context, args AskUserArgs) (map[string]string, error)
-
-// AskUserTool pauses the agent and surfaces a question to the terminal user.
 type AskUserTool struct {
 	r        *Registry
 	callback AskUserCallback
@@ -78,8 +70,6 @@ func (t *AskUserTool) Execute(ctx context.Context, args json.RawMessage) (string
 	if err := json.Unmarshal(args, &a); err != nil {
 		return "", err
 	}
-
-	// Block until user responds (handled by agent via channel)
 	reply, err := t.callback(ctx, a)
 	if err != nil {
 		return "", err

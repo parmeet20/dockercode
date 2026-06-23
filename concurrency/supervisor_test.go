@@ -16,11 +16,8 @@ func TestSupervisor_Go(t *testing.T) {
 
 	s.Go(ctx, "test_job", func() {
 		defer wg.Done()
-		// Sleep briefly to ensure it registers as active
 		time.Sleep(50 * time.Millisecond)
 	})
-
-	// Check active count immediately
 	time.Sleep(10 * time.Millisecond)
 	active := s.ActiveCount()
 	if active["test_job"] != 1 {
@@ -39,7 +36,7 @@ func TestSupervisor_Go(t *testing.T) {
 func TestSupervisor_Go_CancelledContext(t *testing.T) {
 	s := NewSupervisor()
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // cancel immediately
+	cancel()
 
 	executed := false
 	s.Go(ctx, "cancelled_job", func() {

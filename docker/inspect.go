@@ -6,7 +6,6 @@ import (
 	"fmt"
 )
 
-// InspectContainer inspects a container by name or ID and returns a filtered JSON representation.
 func (c *Client) InspectContainer(ctx context.Context, name string) (string, error) {
 	inspect, err := c.cli.ContainerInspect(ctx, name)
 	if err != nil {

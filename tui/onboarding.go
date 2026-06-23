@@ -26,7 +26,6 @@ const (
 	stepDone
 )
 
-// OnboardingModel is the Bubbletea model for the multi-step setup wizard.
 type OnboardingModel struct {
 	ctx         context.Context
 	cfg         *config.Manager
@@ -41,14 +40,11 @@ type OnboardingModel struct {
 	statusMsg   string
 	spinner     Spinner
 	spinning    bool
-
-	// collected values
-	baseURL string
-	token   string
-	model   string
+	baseURL     string
+	token       string
+	model       string
 }
 
-// NewOnboardingModel initialises the onboarding wizard.
 func NewOnboardingModel(ctx context.Context, cfg *config.Manager) OnboardingModel {
 	inp := textinput.New()
 	inp.Placeholder = "https://api.openai.com/v1"
@@ -73,7 +69,6 @@ func NewOnboardingModel(ctx context.Context, cfg *config.Manager) OnboardingMode
 	}
 }
 
-// OnboardDoneMsg is sent when onboarding completes successfully.
 type OnboardDoneMsg struct {
 	BaseURL string
 	Token   string
@@ -163,7 +158,6 @@ func (m OnboardingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case stepDone:
-			// nothing
 		}
 
 		if msg.String() == "ctrl+c" {
@@ -180,7 +174,6 @@ func (m OnboardingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinning = false
 		m.models = msg.models
 		m.statusMsg = StyleSuccess.Render(IconSuccess + " Connected successfully")
-		// Pre-select model
 		for i, mod := range m.models {
 			low := strings.ToLower(mod)
 			if strings.Contains(low, "gpt-4o") || strings.Contains(low, "claude") || strings.Contains(low, "llama") {
@@ -199,14 +192,11 @@ func (m OnboardingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case onboardDockerOKMsg:
 		m.step = stepDone
-		// Save config and signal completion
 		_ = m.cfg.Update(func(c *config.AppConfig) {
 			c.APIURL = m.baseURL
 			c.APIToken = m.token
 			c.Model = m.model
 		})
-		// Brief pause so the user can read the success message, then quit
-		// the onboarding program. root.go detects config exists and starts main app.
 		cmds = append(cmds, func() tea.Msg {
 			time.Sleep(600 * time.Millisecond)
 			return tea.Quit()
@@ -271,14 +261,12 @@ func (m OnboardingModel) header() string {
 
 func renderPixelWhale() string {
 	var sb strings.Builder
-
-	// Define modern colors for the whale using background blocks
-	d := lipgloss.NewStyle().Background(lipgloss.Color("#5C4033")).Render("  ") // Dark brown
-	m := lipgloss.NewStyle().Background(lipgloss.Color("#8B5A2B")).Render("  ") // Mid brown
-	l := lipgloss.NewStyle().Background(lipgloss.Color("#CD853F")).Render("  ") // Light brown
-	g := lipgloss.NewStyle().Background(lipgloss.Color("#FFD700")).Render("  ") // Golden eye
-	b := lipgloss.NewStyle().Background(lipgloss.Color("#00D4FF")).Render("  ") // Blue splash
-	e := "  "                                                                   // Empty space
+	d := lipgloss.NewStyle().Background(lipgloss.Color("#5C4033")).Render("  ")
+	m := lipgloss.NewStyle().Background(lipgloss.Color("#8B5A2B")).Render("  ")
+	l := lipgloss.NewStyle().Background(lipgloss.Color("#CD853F")).Render("  ")
+	g := lipgloss.NewStyle().Background(lipgloss.Color("#FFD700")).Render("  ")
+	b := lipgloss.NewStyle().Background(lipgloss.Color("#E3A869")).Render("  ")
+	e := "  "
 
 	grid := []string{
 		"          b             ",
@@ -292,7 +280,7 @@ func renderPixelWhale() string {
 	}
 
 	for _, row := range grid {
-		sb.WriteString("       ") // 7 spaces margin for centering in 62-wide text container
+		sb.WriteString("       ")
 		for _, ch := range row {
 			switch ch {
 			case 'd':
@@ -364,9 +352,9 @@ func (m OnboardingModel) renderModelPicker() string {
 		prefix := "  "
 		if i == m.modelIdx {
 			if HasUnicodeSupport() {
-				prefix = StylePrimary.Render("▸ ")
+				prefix = StyleDim.Render("▸ ")
 			} else {
-				prefix = StylePrimary.Render("> ")
+				prefix = StyleDim.Render("> ")
 			}
 		} else {
 		}

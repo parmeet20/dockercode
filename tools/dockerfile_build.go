@@ -38,8 +38,6 @@ func (t *DockerfileBuildTool) Execute(ctx context.Context, args json.RawMessage)
 	if path == "" || tag == "" {
 		return "", fmt.Errorf("missing required parameters: path and tag")
 	}
-
-	// Create tar archive of the build context directory
 	buf, err := tarDirectory(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to package build context: %w", err)
@@ -52,12 +50,10 @@ func (t *DockerfileBuildTool) Execute(ctx context.Context, args json.RawMessage)
 
 	result := output.String()
 	if len(result) > 2000 {
-		result = result[len(result)-2000:] // keep last 2000 chars
+		result = result[len(result)-2000:]
 	}
 	return fmt.Sprintf("built %s\n%s", tag, result), nil
 }
-
-// tarDirectory creates an in-memory tar archive of a directory for use as Docker build context.
 func tarDirectory(srcDir string) (io.Reader, error) {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)

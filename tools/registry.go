@@ -7,40 +7,32 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/parmeet20/dockcode/docker"
 	"github.com/openai/openai-go"
+	"github.com/parmeet20/dockcode/docker"
 )
 
-// Tool represents a capability that the LLM agent can invoke.
 type Tool interface {
 	Name() string
 	Description() string
 	Schema() json.RawMessage
 	Execute(ctx context.Context, args json.RawMessage) (string, error)
 }
-
-// Registry stores all registered tools and provides a dispatch mechanism.
 type Registry struct {
 	tools   map[string]Tool
 	Docker  *docker.Client
 	Program *tea.Program
-	Agent   interface{} // Bridged to *agent.Agent to break cyclic import
+	Agent   interface{}
 }
 
-// NewRegistry creates a new tool registry.
 func NewRegistry(dockerClient *docker.Client) *Registry {
 	return &Registry{
 		tools:  make(map[string]Tool),
 		Docker: dockerClient,
 	}
 }
-
-// Register adds a tool to the registry.
 func (r *Registry) Register(t Tool) {
 	r.tools[t.Name()] = t
 }
-
-// Dispatch executes the named tool with the provided arguments and a context timeout.
 func (r *Registry) Dispatch(ctx context.Context, name string, args json.RawMessage) (string, error) {
 	t, ok := r.tools[name]
 	if !ok {
@@ -57,8 +49,6 @@ func (r *Registry) Dispatch(ctx context.Context, name string, args json.RawMessa
 
 	return t.Execute(ctx, args)
 }
-
-// Schemas returns the list of official OpenAI SDK tool parameters for all registered tools.
 func (r *Registry) Schemas() []openai.ChatCompletionToolParam {
 	schemas := make([]openai.ChatCompletionToolParam, 0, len(r.tools))
 	for _, t := range r.tools {

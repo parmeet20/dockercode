@@ -10,23 +10,18 @@ import (
 	"github.com/parmeet20/dockcode/agent"
 )
 
-// SessionBrowserMsg is sent when the user selects a session to open.
 type SessionBrowserMsg struct{ SessionID string }
-
-// SessionBrowserCloseMsg is sent when the user dismisses the browser.
 type SessionBrowserCloseMsg struct{}
-
-// SessionBrowserModel is the full-screen session browser.
 type SessionBrowserModel struct {
-	index    *agent.SessionIndex
-	sessions []agent.SessionSummary
-	selected int
-	search   textinput.Model
-	width    int
-	height   int
+	index       *agent.SessionIndex
+	sessions    []agent.SessionSummary
+	selected    int
+	search      textinput.Model
+	width       int
+	height      int
+	inputActive bool
 }
 
-// NewSessionBrowserModel creates the browser.
 func NewSessionBrowserModel(index *agent.SessionIndex) SessionBrowserModel {
 	si := textinput.New()
 	si.Placeholder = "Search sessions..."
@@ -34,8 +29,9 @@ func NewSessionBrowserModel(index *agent.SessionIndex) SessionBrowserModel {
 	si.Focus()
 
 	m := SessionBrowserModel{
-		index:  index,
-		search: si,
+		index:       index,
+		search:      si,
+		inputActive: true,
 	}
 	m.reload()
 	return m
@@ -72,53 +68,111 @@ func (m SessionBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "esc":
-			return m, func() tea.Msg { return SessionBrowserCloseMsg{} }
-
-		case "q":
-			if m.search.Value() == "" {
+		if m.inputActive {
+			switch msg.String() {
+			case "ctrl+c":
 				return m, func() tea.Msg { return SessionBrowserCloseMsg{} }
+			case "esc", "tab":
+				m.inputActive = false
+				m.search.Blur()
+				return m, nil
+			case "up":
+				if m.selected > 0 {
+					m.selected--
+				}
+				return m, nil
+			case "down":
+				if m.selected < len(m.sessions)-1 {
+					m.selected++
+				}
+				return m, nil
+			case "enter":
+				if len(m.sessions) > 0 {
+					id := m.sessions[m.selected].ID
+					return m, func() tea.Msg { return SessionBrowserMsg{SessionID: id} }
+				}
+				m.inputActive = false
+				m.search.Blur()
+				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.search, cmd = m.search.Update(msg)
+				m.reload()
+				return m, cmd
 			}
+		} else {
+			switch msg.String() {
+			case "ctrl+c", "q", "esc":
+				return m, func() tea.Msg { return SessionBrowserCloseMsg{} }
 
-		case "up", "k":
-			if m.selected > 0 {
-				m.selected--
+			case "up", "k":
+				if m.selected > 0 {
+					m.selected--
+				}
+
+			case "down", "j":
+				if m.selected < len(m.sessions)-1 {
+					m.selected++
+				}
+
+			case "enter":
+				if len(m.sessions) > 0 {
+					id := m.sessions[m.selected].ID
+					return m, func() tea.Msg { return SessionBrowserMsg{SessionID: id} }
+				}
+
+			case "n":
+				return m, func() tea.Msg { return SessionBrowserMsg{SessionID: "new"} }
+
+			case "/", "i", "tab":
+				m.inputActive = true
+				m.search.Focus()
+				return m, nil
 			}
-
-		case "down", "j":
-			if m.selected < len(m.sessions)-1 {
-				m.selected++
-			}
-
-		case "enter":
-			if len(m.sessions) > 0 {
-				id := m.sessions[m.selected].ID
-				return m, func() tea.Msg { return SessionBrowserMsg{SessionID: id} }
-			}
-
-		case "n":
-			return m, func() tea.Msg { return SessionBrowserMsg{SessionID: "new"} }
-
-		default:
-			var cmd tea.Cmd
-			m.search, cmd = m.search.Update(msg)
-			m.reload()
-			return m, cmd
 		}
 	}
 	return m, nil
 }
 
 func (m SessionBrowserModel) View() string {
-	browserTitle := "📋  Sessions"
-	if !HasUnicodeSupport() {
-		browserTitle = "Sessions"
+	browserTitle := "Sessions"
+	if HasUnicodeSupport() {
+		browserTitle = "📋  Sessions"
 	}
-	header := StylePrimary.Render(browserTitle) + "  " +
-		StyleDim.Render("Enter=open  N=new  Q=back")
 
-	searchBox := StyleInputFocused.Width(60).Render(m.search.View())
+	maxRows := m.height - 16
+	if maxRows < 1 {
+		maxRows = 1
+	}
+
+	startIdx := 0
+	if m.selected >= maxRows {
+		startIdx = m.selected - maxRows + 1
+	}
+	endIdx := startIdx + maxRows
+	if endIdx > len(m.sessions) {
+		endIdx = len(m.sessions)
+		startIdx = endIdx - maxRows
+		if startIdx < 0 {
+			startIdx = 0
+		}
+	}
+
+	showingText := "0 sessions"
+	if len(m.sessions) > 0 {
+		showingText = fmt.Sprintf("Showing %d-%d of %d", startIdx+1, endIdx, len(m.sessions))
+	}
+
+	header := StylePrimary.Render(browserTitle) + "  " +
+		StyleDim.Render("Tab/Esc=nav/search  Enter=open  N=new  Q=back") +
+		"  " + StyleDim.Render("("+showingText+")")
+
+	var searchBox string
+	if m.inputActive {
+		searchBox = StyleInputFocused.Width(60).Render(m.search.View())
+	} else {
+		searchBox = StyleInput.Width(60).Render(m.search.View())
+	}
 
 	var rows []string
 	rows = append(rows, StyleBold.Render(
@@ -126,7 +180,8 @@ func (m SessionBrowserModel) View() string {
 	))
 	rows = append(rows, StyleDim.Render(strings.Repeat("─", 70)))
 
-	for i, s := range m.sessions {
+	for i := startIdx; i < endIdx; i++ {
+		s := m.sessions[i]
 		title := s.Title
 		if len(title) > 40 {
 			title = title[:37] + "..."
@@ -137,13 +192,13 @@ func (m SessionBrowserModel) View() string {
 		}
 		tokens := fmt.Sprintf("%d", s.TokensIn+s.TokensOut)
 		row := fmt.Sprintf("  %-40s  %-12s  %s", title, date, tokens)
-		arrow := "▸ "
-		if !HasUnicodeSupport() {
-			arrow = "> "
+		arrow := "> "
+		if HasUnicodeSupport() {
+			arrow = "▸ "
 		}
 		if i == m.selected {
 			rows = append(rows, lipgloss.NewStyle().
-				Foreground(ColorDim).
+				Foreground(ColorPrimary).
 				Bold(true).
 				Render(arrow+row))
 		} else {
@@ -156,7 +211,7 @@ func (m SessionBrowserModel) View() string {
 	}
 
 	body := strings.Join(rows, "\n")
-	content := header + "\n\n" + searchBox + "\n\n" + body
+	content := header + "\n" + searchBox + "\n" + body
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

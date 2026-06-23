@@ -48,8 +48,6 @@ func (t *ImagePullTool) Execute(ctx context.Context, args json.RawMessage) (stri
 	if err != nil {
 		return "", err
 	}
-
-	// Format size to human readable MB/GB
 	sizeStr := fmt.Sprintf("%d B", size)
 	if size > 1024*1024*1024 {
 		sizeStr = fmt.Sprintf("%.2f GB", float64(size)/(1024*1024*1024))

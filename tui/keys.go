@@ -2,7 +2,6 @@ package tui
 
 import "github.com/charmbracelet/bubbles/key"
 
-// KeyMap defines all keyboard bindings for the application.
 type KeyMap struct {
 	Send       key.Binding
 	Tab        key.Binding
@@ -18,7 +17,6 @@ type KeyMap struct {
 	Panel4     key.Binding
 }
 
-// DefaultKeyMap returns the default key bindings.
 func DefaultKeyMap() KeyMap {
 	return KeyMap{
 		Send: key.NewBinding(

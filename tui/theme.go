@@ -8,14 +8,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// ─── Unicode / Emoji Detection ───────────────────────────────────────────────
-
-// HasUnicodeSupport checks if the terminal supports Unicode.
 func HasUnicodeSupport() bool {
 	if runtime.GOOS != "windows" {
 		return true
 	}
-	// On Windows, check if we're running inside Windows Terminal, VS Code, or mintty (git bash)
 	if os.Getenv("WT_SESSION") != "" || os.Getenv("TERM_PROGRAM") != "" {
 		return true
 	}
@@ -23,14 +19,11 @@ func HasUnicodeSupport() bool {
 	if strings.Contains(term, "xterm") || strings.Contains(term, "256color") || term == "cygwin" {
 		return true
 	}
-	// Otherwise assume classic CMD/PowerShell which has poor Unicode support by default.
 	return false
 }
 
-// ─── Adaptive Color Palette ───────────────────────────────────────────────────
-
 var (
-	ColorPrimary = lipgloss.AdaptiveColor{Light: "#0099BB", Dark: "#00D4FF"}
+	ColorPrimary = lipgloss.AdaptiveColor{Light: "#7A431D", Dark: "#E3A869"}
 	ColorText    = lipgloss.AdaptiveColor{Light: "#1A1A1A", Dark: "#E8E8E8"}
 	ColorDim     = lipgloss.AdaptiveColor{Light: "#666666", Dark: "#A0A0A0"}
 	ColorBg      = lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#0D0D0D"}
@@ -43,10 +36,8 @@ var (
 	ColorBorder  = lipgloss.AdaptiveColor{Light: "#CCCCCC", Dark: "#333333"}
 )
 
-// ─── Icons & App Info ─────────────────────────────────────────────────────────
-
 var (
-	AppLogo     = "🐳 DockCode"
+	AppLogo     = "DockCode"
 	IconPending = "◦"
 	IconSuccess = "✓"
 	IconError   = "✗"
@@ -74,8 +65,6 @@ func init() {
 	}
 }
 
-// ─── Base Styles ──────────────────────────────────────────────────────────────
-
 var (
 	StyleBase = lipgloss.NewStyle().
 			Foreground(ColorText)
@@ -84,7 +73,7 @@ var (
 			Foreground(ColorDim)
 
 	StylePrimary = lipgloss.NewStyle().
-			Foreground(ColorDim).
+			Foreground(ColorPrimary).
 			Bold(true)
 
 	StyleSuccess = lipgloss.NewStyle().
@@ -101,23 +90,28 @@ var (
 
 	StyleBold = lipgloss.NewStyle().
 			Bold(true)
-
-	// Panel borders
 	StyleActiveBorder = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorDim)
+				BorderForeground(ColorPrimary)
 
 	StyleInactiveBorder = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(ColorBorder)
 
-	// Status bar
+	StyleActiveTab = lipgloss.NewStyle().
+				Background(ColorPrimary).
+				Foreground(ColorBg).
+				Bold(true).
+				Padding(0, 1)
+
+	StyleInactiveTab = lipgloss.NewStyle().
+				Foreground(ColorDim).
+				Padding(0, 1)
+
 	StyleStatusBar = lipgloss.NewStyle().
 			Background(ColorPanel).
 			Foreground(ColorText).
 			Padding(0, 1)
-
-	// Input area
 	StyleInput = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(ColorBorder).
@@ -127,21 +121,14 @@ var (
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(ColorDim).
 				Padding(0, 1)
-
-	// Chat message prefixes
 	StyleUserPrefix  = lipgloss.NewStyle().Foreground(ColorDim).Bold(true)
 	StyleAgentPrefix = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
 	StyleInfoPrefix  = lipgloss.NewStyle().Foreground(ColorDim)
 	StyleErrPrefix   = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
 	StyleToolPrefix  = lipgloss.NewStyle().Foreground(ColorTool).Bold(true)
 )
-
-// ─── Theme Toggle ─────────────────────────────────────────────────────────────
-
-// IsDarkMode tracks current theme mode. Toggled by /theme command.
 var IsDarkMode = true
 
-// ToggleTheme switches between dark and light mode.
 func ToggleTheme() {
 	IsDarkMode = !IsDarkMode
 }

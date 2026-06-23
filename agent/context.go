@@ -4,9 +4,6 @@ import (
 	"github.com/parmeet20/dockcode/llm"
 )
 
-// BuildContext assembles the full conversation context to send to the LLM.
-// It prepends the system prompt from agent memory, followed by the session
-// chat history converted to LLM messages, and finally the new user message.
 func BuildContext(mem *Memory, history []ChatEntry, userMsg string) []llm.Message {
 	messages := []llm.Message{
 		{Role: "system", Content: mem.BuildSystemPrompt()},
@@ -34,8 +31,6 @@ func BuildContext(mem *Memory, history []ChatEntry, userMsg string) []llm.Messag
 
 	return messages
 }
-
-// AppendToolRound appends assistant response with tool calls and their results to the message list.
 func AppendToolRound(
 	messages []llm.Message,
 	assistantText string,

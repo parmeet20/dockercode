@@ -8,24 +8,20 @@ import (
 	"sync"
 )
 
-// SessionSummary is a lightweight entry in the session index.
 type SessionSummary struct {
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	UpdatedAt string `json:"updated_at"`
-	TokensIn  int    `json:"tokens_in"`
-	TokensOut int    `json:"tokens_out"`
+	ID        string   `json:"id"`
+	Title     string   `json:"title"`
+	UpdatedAt string   `json:"updated_at"`
+	TokensIn  int      `json:"tokens_in"`
+	TokensOut int      `json:"tokens_out"`
 	Tags      []string `json:"tags"`
 }
-
-// SessionIndex manages the index.json file tracking all sessions.
 type SessionIndex struct {
 	mu      sync.RWMutex
 	path    string
 	entries []SessionSummary
 }
 
-// NewSessionIndex loads or creates the session index from disk.
 func NewSessionIndex(baseDir string) (*SessionIndex, error) {
 	path := filepath.Join(baseDir, "index.json")
 	idx := &SessionIndex{path: path}
@@ -44,8 +40,6 @@ func (i *SessionIndex) load() error {
 	defer i.mu.Unlock()
 	return json.Unmarshal(data, &i.entries)
 }
-
-// Upsert adds or updates a session summary in the index and saves it.
 func (i *SessionIndex) Upsert(s SessionSummary) error {
 	i.mu.Lock()
 	found := false
@@ -59,7 +53,6 @@ func (i *SessionIndex) Upsert(s SessionSummary) error {
 	if !found {
 		i.entries = append(i.entries, s)
 	}
-	// Sort by updated_at descending
 	entries := make([]SessionSummary, len(i.entries))
 	copy(entries, i.entries)
 	i.mu.Unlock()
@@ -74,8 +67,6 @@ func (i *SessionIndex) Upsert(s SessionSummary) error {
 
 	return i.save()
 }
-
-// Delete removes a session from the index.
 func (i *SessionIndex) Delete(id string) error {
 	i.mu.Lock()
 	out := i.entries[:0]
@@ -88,8 +79,6 @@ func (i *SessionIndex) Delete(id string) error {
 	i.mu.Unlock()
 	return i.save()
 }
-
-// List returns all session summaries (sorted by updated_at desc).
 func (i *SessionIndex) List() []SessionSummary {
 	i.mu.RLock()
 	defer i.mu.RUnlock()

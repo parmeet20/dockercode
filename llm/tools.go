@@ -6,8 +6,6 @@ import (
 	"github.com/openai/openai-go"
 )
 
-// MapToolToParam converts an internal tool's name, description, and JSON schema
-// to the official openai.ChatCompletionToolParam required by the OpenAI Go SDK.
 func MapToolToParam(name, desc string, schema json.RawMessage) openai.ChatCompletionToolParam {
 	var params map[string]interface{}
 	if len(schema) > 0 {
@@ -29,4 +27,3 @@ func MapToolToParam(name, desc string, schema json.RawMessage) openai.ChatComple
 		},
 	}
 }
-

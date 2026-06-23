@@ -16,15 +16,12 @@ import (
 	"github.com/openai/openai-go/packages/ssestream"
 )
 
-// RetryConfig specifies limits for retrying LLM API requests.
 type RetryConfig struct {
-	MaxAttempts int           // 5
-	BaseDelay   time.Duration // 1s
-	MaxDelay    time.Duration // 30s
-	Multiplier  float64       // 2.0
+	MaxAttempts int
+	BaseDelay   time.Duration
+	MaxDelay    time.Duration
+	Multiplier  float64
 }
-
-// Client wraps the official OpenAI SDK client and handles retries, baseURL/token switches.
 type Client struct {
 	mu       sync.RWMutex
 	baseURL  string
@@ -34,23 +31,18 @@ type Client struct {
 	program  *tea.Program
 	retryCfg RetryConfig
 }
-
-// Delta represents a chunk in the streamed chat response.
 type Delta struct {
-	Type     string // "text" | "tool_call" | "tool_call_chunk" | "tool_call_end" | "done" | "error"
+	Type     string
 	Text     string
 	ToolName string
-	ToolArgs string // accumulated JSON fragment
+	ToolArgs string
 	ToolID   string
 }
-
-// RetryMsg is sent to the Bubbletea program to log API failures/retries in chat viewport.
 type RetryMsg struct {
 	Message string
 	Error   bool
 }
 
-// NewClient initializes and returns an LLM client wrapper.
 func NewClient(baseURL, token, model string) *Client {
 	c := &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
@@ -66,15 +58,11 @@ func NewClient(baseURL, token, model string) *Client {
 	c.reinitClient()
 	return c
 }
-
-// SetProgram assigns the Bubbletea program pointer to dispatch TUI status messages.
 func (c *Client) SetProgram(p *tea.Program) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.program = p
 }
-
-// UpdateConfig updates the client's URL, Token, or Model dynamically and re-initializes it.
 func (c *Client) UpdateConfig(baseURL, token, model string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -83,8 +71,6 @@ func (c *Client) UpdateConfig(baseURL, token, model string) {
 	c.model = model
 	c.reinitClient()
 }
-
-// GetModel returns the currently configured model name.
 func (c *Client) GetModel() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -107,8 +93,6 @@ func (c *Client) notify(msg string, isError bool) {
 		p.Send(RetryMsg{Message: msg, Error: isError})
 	}
 }
-
-// withRetry executes a function with backoff retries according to Rule 10.
 func (c *Client) withRetry(ctx context.Context, fn func() error) error {
 	var lastErr error
 	c.mu.RLock()
@@ -186,8 +170,6 @@ func (c *Client) withRetry(ctx context.Context, fn func() error) error {
 	c.notify(msg, true)
 	return errors.New(msg)
 }
-
-// ChatStream initiates a streamed chat completion request.
 func (c *Client) ChatStream(ctx context.Context, messages []Message, tools []openai.ChatCompletionToolParam) <-chan Delta {
 	deltaCh := make(chan Delta, 32)
 
@@ -311,8 +293,6 @@ func (c *Client) ChatStream(ctx context.Context, messages []Message, tools []ope
 
 	return deltaCh
 }
-
-// ListModels fetches the list of available model IDs.
 func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -337,8 +317,6 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 	}
 	return ids, nil
 }
-
-// ValidateCredentials pings the model API with a short timeout.
 func (c *Client) ValidateCredentials(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

@@ -1,14 +1,12 @@
 package config
 
-// AppConfig holds the configuration settings for DockCode
 type AppConfig struct {
 	APIURL   string `json:"api_url"`
 	APIToken string `json:"api_token"`
 	Model    string `json:"model"`
-	Theme    string `json:"theme"` // "dark" or "light"
+	Theme    string `json:"theme"`
 }
 
-// DefaultConfig returns the default configuration values
 func DefaultConfig() *AppConfig {
 	return &AppConfig{
 		APIURL:   "https://api.openai.com/v1",

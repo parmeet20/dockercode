@@ -43,14 +43,12 @@ func TestPool_Stop(t *testing.T) {
 		}
 	}
 
-	pool.Stop() // should cancel in-flight and wait
-	// Just verify it doesn't hang
+	pool.Stop()
 }
 
 func TestPool_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	pool := NewPool(ctx, 2)
-	// Saturate pool
 	_ = pool.Submit(func(ctx context.Context) error {
 		time.Sleep(200 * time.Millisecond)
 		return nil

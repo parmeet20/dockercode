@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// SessionMeta holds session metadata stored in meta.json.
 type SessionMeta struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
@@ -21,15 +20,11 @@ type SessionMeta struct {
 	TokensOut int       `json:"tokens_out"`
 	Tags      []string  `json:"tags"`
 }
-
-// ChatEntry is a single message in the chat log.
 type ChatEntry struct {
 	Role      string    `json:"role"`
 	Content   string    `json:"content"`
 	Timestamp time.Time `json:"timestamp"`
 }
-
-// Session represents a conversation session with its backing files.
 type Session struct {
 	mu      sync.RWMutex
 	ID      string
@@ -38,14 +33,11 @@ type Session struct {
 	agentMD string
 	chatLog []ChatEntry
 	dirty   bool
-
-	// auto-save ticker
-	ctx    context.Context
-	cancel context.CancelFunc
-	done   chan struct{}
+	ctx     context.Context
+	cancel  context.CancelFunc
+	done    chan struct{}
 }
 
-// NewSession creates a new session directory, writes initial files, and starts auto-save.
 func NewSession(parent context.Context, baseDir string) (*Session, error) {
 	id := fmt.Sprintf("session-%d", time.Now().UnixNano())
 	dir := filepath.Join(baseDir, id)
@@ -79,8 +71,6 @@ func NewSession(parent context.Context, baseDir string) (*Session, error) {
 	go s.autoSave()
 	return s, nil
 }
-
-// LoadSession loads an existing session from disk and starts auto-save.
 func LoadSession(parent context.Context, dir string) (*Session, error) {
 	ctx, cancel := context.WithCancel(parent)
 	s := &Session{
@@ -89,8 +79,6 @@ func LoadSession(parent context.Context, dir string) (*Session, error) {
 		cancel: cancel,
 		done:   make(chan struct{}),
 	}
-
-	// Read meta.json
 	metaData, err := os.ReadFile(filepath.Join(dir, "meta.json"))
 	if err != nil {
 		cancel()
@@ -101,14 +89,10 @@ func LoadSession(parent context.Context, dir string) (*Session, error) {
 		return nil, fmt.Errorf("failed to parse meta.json: %w", err)
 	}
 	s.ID = s.Meta.ID
-
-	// Read agent.md
 	agentData, err := os.ReadFile(filepath.Join(dir, "agent.md"))
 	if err == nil {
 		s.agentMD = string(agentData)
 	}
-
-	// Read chat.md lines (simple format)
 	chatData, err := os.ReadFile(filepath.Join(dir, "chat.md"))
 	if err == nil {
 		s.chatLog = parseChatMD(string(chatData))
@@ -117,8 +101,6 @@ func LoadSession(parent context.Context, dir string) (*Session, error) {
 	go s.autoSave()
 	return s, nil
 }
-
-// autoSave runs in background and saves every 30 seconds.
 func (s *Session) autoSave() {
 	defer close(s.done)
 	ticker := time.NewTicker(30 * time.Second)
@@ -137,8 +119,6 @@ func (s *Session) autoSave() {
 		}
 	}
 }
-
-// AppendChat appends a message to the chat log and marks session dirty.
 func (s *Session) AppendChat(role, content string, toolCalls interface{}) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -150,23 +130,17 @@ func (s *Session) AppendChat(role, content string, toolCalls interface{}) {
 	s.Meta.UpdatedAt = time.Now()
 	s.dirty = true
 }
-
-// UpdateAgentMD replaces the agent memory markdown.
 func (s *Session) UpdateAgentMD(content string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.agentMD = content
 	s.dirty = true
 }
-
-// GetAgentMD returns the current agent memory content.
 func (s *Session) GetAgentMD() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.agentMD
 }
-
-// GetChatLog returns a copy of the current chat log.
 func (s *Session) GetChatLog() []ChatEntry {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -174,8 +148,6 @@ func (s *Session) GetChatLog() []ChatEntry {
 	copy(out, s.chatLog)
 	return out
 }
-
-// SetTitle sets the session title.
 func (s *Session) SetTitle(title string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -183,15 +155,11 @@ func (s *Session) SetTitle(title string) {
 	s.Meta.UpdatedAt = time.Now()
 	s.dirty = true
 }
-
-// GetMeta returns a copy of the session metadata.
 func (s *Session) GetMeta() SessionMeta {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.Meta
 }
-
-// Save writes all session files atomically.
 func (s *Session) Save() error {
 	s.mu.RLock()
 	meta := s.Meta
@@ -199,8 +167,6 @@ func (s *Session) Save() error {
 	chatLog := make([]ChatEntry, len(s.chatLog))
 	copy(chatLog, s.chatLog)
 	s.mu.RUnlock()
-
-	// Write meta.json
 	metaData, err := json.MarshalIndent(meta, "", "  ")
 	if err != nil {
 		return err
@@ -208,13 +174,9 @@ func (s *Session) Save() error {
 	if err := atomicWrite(filepath.Join(s.Dir, "meta.json"), metaData); err != nil {
 		return err
 	}
-
-	// Write agent.md
 	if err := atomicWrite(filepath.Join(s.Dir, "agent.md"), []byte(agentMD)); err != nil {
 		return err
 	}
-
-	// Write chat.md
 	chatMD := formatChatMD(chatLog)
 	if err := atomicWrite(filepath.Join(s.Dir, "chat.md"), []byte(chatMD)); err != nil {
 		return err
@@ -226,14 +188,10 @@ func (s *Session) Save() error {
 
 	return nil
 }
-
-// Stop cancels auto-save and waits for the goroutine to exit.
 func (s *Session) Stop() {
 	s.cancel()
 	<-s.done
 }
-
-// atomicWrite writes to a .tmp file and renames it to the target path.
 func atomicWrite(path string, data []byte) error {
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, data, 0644); err != nil {
@@ -241,8 +199,6 @@ func atomicWrite(path string, data []byte) error {
 	}
 	return os.Rename(tmp, path)
 }
-
-// formatChatMD converts the chat log into a markdown-formatted string.
 func formatChatMD(log []ChatEntry) string {
 	var sb strings.Builder
 	sb.WriteString("# Chat Log\n\n")
@@ -252,8 +208,6 @@ func formatChatMD(log []ChatEntry) string {
 	}
 	return sb.String()
 }
-
-// parseChatMD reconstructs a minimal chat log from the markdown file.
 func parseChatMD(content string) []ChatEntry {
 	var log []ChatEntry
 	blocks := strings.Split(content, "\n\n---\n\n")
@@ -262,15 +216,12 @@ func parseChatMD(content string) []ChatEntry {
 		if block == "" || !strings.HasPrefix(block, "## ") {
 			continue
 		}
-		// Split header and body
 		lines := strings.SplitN(block, "\n", 2)
 		if len(lines) < 2 {
 			continue
 		}
 		header := lines[0]
 		body := strings.TrimSpace(lines[1])
-
-		// Parse header: "## ROLE [TIMESTAMP]"
 		header = strings.TrimPrefix(header, "## ")
 		parts := strings.SplitN(header, " [", 2)
 		role := strings.ToLower(strings.TrimSpace(parts[0]))

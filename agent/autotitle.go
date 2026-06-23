@@ -9,8 +9,6 @@ import (
 	"github.com/parmeet20/dockcode/llm"
 )
 
-// GenerateTitle fires a background goroutine via the supervisor that asks the LLM
-// to produce a short 5-word title for the session, then updates session metadata.
 func GenerateTitle(
 	sup *concurrency.Supervisor,
 	parent context.Context,
@@ -43,7 +41,6 @@ func GenerateTitle(
 
 		t := strings.TrimSpace(title.String())
 		if t == "" || len(t) > 80 {
-			// Fallback: use first 40 chars of the user message
 			t = firstUserMsg
 			if len(t) > 40 {
 				t = t[:40] + "…"

@@ -9,23 +9,17 @@ import (
 	"github.com/parmeet20/dockcode/agent"
 )
 
-// SessionDetailCloseMsg is sent when the user closes the detail view.
 type SessionDetailCloseMsg struct{}
-
-// SessionDetailOpenMsg is sent when the user chooses to open/resume a session.
 type SessionDetailOpenMsg struct{ SessionID string }
-
-// SessionDetailModel shows metadata + chat preview for a single session.
 type SessionDetailModel struct {
 	summary agent.SessionSummary
-	chatMD  string // raw chat.md content
-	agentMD string // raw agent.md content (first 20 lines)
+	chatMD  string
+	agentMD string
 	scroll  int
 	width   int
 	height  int
 }
 
-// NewSessionDetailModel creates the detail view for a given session summary.
 func NewSessionDetailModel(
 	summary agent.SessionSummary,
 	chatMD string,
@@ -67,10 +61,7 @@ func (m SessionDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m SessionDetailModel) View() string {
 	halfW := m.width/2 - 4
-
-	// Left panel: metadata
 	left := m.renderMeta(halfW)
-	// Right panel: chat + agent.md preview
 	right := m.renderPreview(halfW)
 
 	row := lipgloss.JoinHorizontal(lipgloss.Top,
@@ -80,7 +71,7 @@ func (m SessionDetailModel) View() string {
 
 	help := StyleDim.Render("O=open session  Q=back  ↑↓=scroll")
 	return lipgloss.JoinVertical(lipgloss.Left,
-		StylePrimary.Render("◈ Session Detail"),
+		StyleDim.Render("◈ Session Detail"),
 		row,
 		help,
 	)

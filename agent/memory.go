@@ -5,17 +5,13 @@ import (
 	"strings"
 )
 
-// Memory provides structured access to the agent.md file sections.
 type Memory struct {
 	session *Session
 }
 
-// NewMemory wraps a Session for structured agent memory access.
 func NewMemory(s *Session) *Memory {
 	return &Memory{session: s}
 }
-
-// GetSection returns the content of a named section (## heading) from agent.md.
 func (m *Memory) GetSection(section string) string {
 	md := m.session.GetAgentMD()
 	lines := strings.Split(md, "\n")
@@ -39,8 +35,6 @@ func (m *Memory) GetSection(section string) string {
 	}
 	return strings.TrimSpace(buf.String())
 }
-
-// SetSection replaces the content of a named section in agent.md.
 func (m *Memory) SetSection(section, content string) {
 	md := m.session.GetAgentMD()
 	heading := "## " + section
@@ -53,7 +47,6 @@ func (m *Memory) SetSection(section, content string) {
 	for _, line := range lines {
 		if strings.HasPrefix(line, "## ") {
 			if inSection {
-				// Exiting section — write the new content first
 				result.WriteString(content)
 				result.WriteString("\n\n")
 				inSection = false
@@ -71,22 +64,16 @@ func (m *Memory) SetSection(section, content string) {
 			result.WriteByte('\n')
 		}
 	}
-
-	// If we ended while still in section
 	if inSection {
 		result.WriteString(content)
 		result.WriteString("\n\n")
 	}
-
-	// If section was never found, append it
 	if !sectionFound {
 		result.WriteString(fmt.Sprintf("\n## %s\n%s\n", section, content))
 	}
 
 	m.session.UpdateAgentMD(result.String())
 }
-
-// AppendToSection appends content to a named section.
 func (m *Memory) AppendToSection(section, content string) {
 	existing := m.GetSection(section)
 	if existing == "" {
@@ -95,8 +82,6 @@ func (m *Memory) AppendToSection(section, content string) {
 		m.SetSection(section, existing+"\n"+content)
 	}
 }
-
-// BuildSystemPrompt constructs the full system prompt from agent.md sections.
 func (m *Memory) BuildSystemPrompt() string {
 	md := m.session.GetAgentMD()
 	return fmt.Sprintf(`You are DockCode, an expert AI assistant for managing Docker through natural language.

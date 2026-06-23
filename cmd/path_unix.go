@@ -10,25 +10,19 @@ import (
 	"strings"
 )
 
-// EnsureGoBinInPath checks if the default Go binary path is in the PATH env var.
-// If it is not, it permanently adds it to the shell configuration profiles (Zsh/Bash/Profile).
 func EnsureGoBinInPath() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
 	goBin := filepath.Join(home, "go", "bin")
-
-	// Check if already in PATH
 	pathEnv := os.Getenv("PATH")
 	paths := filepath.SplitList(pathEnv)
 	for _, p := range paths {
 		if strings.EqualFold(filepath.Clean(p), filepath.Clean(goBin)) {
-			return nil // Already in PATH
+			return nil
 		}
 	}
-
-	// On macOS/Linux, update shell files if they exist
 	var shellConfigs []string
 	if runtime.GOOS == "darwin" {
 		shellConfigs = []string{".zshrc", ".bash_profile", ".profile"}

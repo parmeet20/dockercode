@@ -7,8 +7,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// StatusBar renders the top-of-screen status line showing app name, model,
-// token usage progress bar, and Docker connectivity status dot.
 type StatusBar struct {
 	width       int
 	model       string
@@ -19,7 +17,6 @@ type StatusBar struct {
 	spinner     Spinner
 }
 
-// NewStatusBar creates a new StatusBar.
 func NewStatusBar(model string) StatusBar {
 	return StatusBar{
 		model:      model,
@@ -27,11 +24,7 @@ func NewStatusBar(model string) StatusBar {
 		spinner:    NewSpinner(),
 	}
 }
-
-// SetWidth updates the terminal width for layout calculation.
 func (s *StatusBar) SetWidth(w int) { s.width = w }
-
-// Update refreshes dynamic fields.
 func (s *StatusBar) Update(tokenCount int64, dockerAlive, agentBusy bool) {
 	s.tokenCount = tokenCount
 	s.dockerAlive = dockerAlive
@@ -40,18 +33,11 @@ func (s *StatusBar) Update(tokenCount int64, dockerAlive, agentBusy bool) {
 		s.spinner.Tick()
 	}
 }
-
-// View renders the status bar string.
 func (s StatusBar) View() string {
-	// Left: logo + model
-	left := StylePrimary.Render(AppLogo) +
+	left := StyleDim.Render(AppLogo) +
 		StyleDim.Render("  |  ") +
-		StyleBase.Render(IconInfo + " " + s.model)
-
-	// Middle: token bar
+		StyleBase.Render(IconInfo+" "+s.model)
 	middle := s.tokenBar()
-
-	// Right: docker dot + spinner
 	dockerDot := StyleError.Render("● offline")
 	if s.dockerAlive {
 		dockerDot = StyleSuccess.Render("● docker")
@@ -60,8 +46,6 @@ func (s StatusBar) View() string {
 	if s.agentBusy {
 		right = s.spinner.View() + "  " + right
 	}
-
-	// Compose with spacing
 	leftW := lipgloss.Width(left)
 	rightW := lipgloss.Width(right)
 	midW := lipgloss.Width(middle)

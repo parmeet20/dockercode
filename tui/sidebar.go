@@ -14,7 +14,6 @@ import (
 	"github.com/parmeet20/dockcode/docker"
 )
 
-// SidebarPanel identifies which panel is active.
 type SidebarPanel int
 
 const (
@@ -24,7 +23,6 @@ const (
 	PanelNetworks
 )
 
-// Sidebar holds Docker resource data and renders the right-hand panel.
 type Sidebar struct {
 	activePanel SidebarPanel
 	width       int
@@ -37,27 +35,16 @@ type Sidebar struct {
 	focused    bool
 }
 
-// NewSidebar creates an empty Sidebar.
-func NewSidebar() Sidebar { return Sidebar{} }
-
-// SetFocus marks the sidebar as focused/unfocused.
-func (s *Sidebar) SetFocus(f bool) { s.focused = f }
-
-// SetSize updates layout dimensions.
-func (s *Sidebar) SetSize(w, h int) { s.width = w; s.height = h }
-
-// SetPanel switches the active tab panel.
+func NewSidebar() Sidebar                  { return Sidebar{} }
+func (s *Sidebar) SetFocus(f bool)         { s.focused = f }
+func (s *Sidebar) SetSize(w, h int)        { s.width = w; s.height = h }
 func (s *Sidebar) SetPanel(p SidebarPanel) { s.activePanel = p }
-
-// Update applies fresh Docker state from SidebarRefreshMsg.
 func (s *Sidebar) Update(msg agent.SidebarRefreshMsg) {
 	s.containers = msg.Containers
 	s.images = msg.Images
 	s.volumes = msg.Volumes
 	s.networks = msg.Networks
 }
-
-// View renders the full sidebar string.
 func (s Sidebar) View() string {
 	tabs := s.renderTabs()
 	content := s.renderPanel()
@@ -75,9 +62,9 @@ func (s Sidebar) renderTabs() string {
 	var parts []string
 	for i, label := range labels {
 		if SidebarPanel(i) == s.activePanel {
-			parts = append(parts, StylePrimary.Render(label))
+			parts = append(parts, StyleActiveTab.Render(label))
 		} else {
-			parts = append(parts, StyleDim.Render(label))
+			parts = append(parts, StyleInactiveTab.Render(label))
 		}
 	}
 	return strings.Join(parts, " ")
@@ -104,7 +91,6 @@ func (s Sidebar) renderPanel() string {
 	if len(lines) == 0 {
 		return StyleDim.Render("  (none)")
 	}
-	// Truncate to available height
 	if len(lines) > available {
 		lines = lines[:available]
 	}
@@ -193,10 +179,6 @@ func formatSidebarSize(b int64) string {
 	}
 }
 
-// ─── SidebarRefresher ─────────────────────────────────────────────────────────
-
-// SidebarRefresher runs a background ticker that polls Docker state and sends
-// SidebarRefreshMsg to the Bubbletea program every 5 seconds.
 type SidebarRefresher struct {
 	docker    *docker.Client
 	program   *tea.Program
@@ -206,7 +188,6 @@ type SidebarRefresher struct {
 	done      chan struct{}
 }
 
-// NewSidebarRefresher creates a SidebarRefresher. Call Start() to begin ticking.
 func NewSidebarRefresher(
 	parent context.Context,
 	dockerClient *docker.Client,
@@ -223,14 +204,11 @@ func NewSidebarRefresher(
 		done:      make(chan struct{}),
 	}
 }
-
-// Start begins the refresh loop in a background goroutine.
 func (r *SidebarRefresher) Start() {
 	go func() {
 		defer close(r.done)
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
-		// Initial refresh immediately
 		r.refresh()
 		for {
 			select {
@@ -245,8 +223,6 @@ func (r *SidebarRefresher) Start() {
 		}
 	}()
 }
-
-// Stop cancels the refresh loop and blocks until the goroutine exits.
 func (r *SidebarRefresher) Stop() {
 	r.cancel()
 	<-r.done
@@ -290,17 +266,13 @@ func (r *SidebarRefresher) refresh() {
 	})
 }
 
-// SidebarTickMsg is used to drive the spinner when sidebar is refreshing.
 type SidebarTickMsg struct{}
 
-// SidebarTickCmd returns a command that fires after TickInterval.
 func SidebarTickCmd() tea.Cmd {
 	return tea.Tick(TickInterval, func(t time.Time) tea.Msg {
 		return SidebarTickMsg{}
 	})
 }
-
-// FormatContainerStatus returns a short human-readable status.
 func FormatContainerStatus(status string) string {
 	lower := strings.ToLower(status)
 	switch {

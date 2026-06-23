@@ -6,17 +6,13 @@ import (
 	"github.com/parmeet20/dockcode/llm"
 )
 
-// StreamDispatcher reads from the LLM delta channel and dispatches text chunks
-// and tool call events through the agent callbacks. It runs on the agent goroutine
-// (not a separate goroutine) and returns accumulated results.
 type StreamDispatcher struct {
-	onText    func(text string)
+	onText      func(text string)
 	onToolStart func(id, name string)
 	onToolChunk func(id, chunk string)
 	onToolEnd   func(id string)
 }
 
-// NewStreamDispatcher creates a dispatcher with callbacks for each event type.
 func NewStreamDispatcher(
 	onText func(string),
 	onToolStart func(id, name string),
@@ -31,14 +27,12 @@ func NewStreamDispatcher(
 	}
 }
 
-// DispatchResult holds what was accumulated during a stream.
 type DispatchResult struct {
 	FullText  string
 	ToolCalls []llm.ToolCall
 	Error     error
 }
 
-// Run consumes the delta channel and dispatches events, returning when done or ctx cancelled.
 func (d *StreamDispatcher) Run(ctx context.Context, deltaCh <-chan llm.Delta) DispatchResult {
 	var (
 		fullText    string
@@ -52,7 +46,6 @@ func (d *StreamDispatcher) Run(ctx context.Context, deltaCh <-chan llm.Delta) Di
 			return DispatchResult{FullText: fullText, ToolCalls: toolCalls, Error: ctx.Err()}
 		case delta, ok := <-deltaCh:
 			if !ok {
-				// channel closed — done
 				if currentTool != nil {
 					toolCalls = append(toolCalls, *currentTool)
 					if d.onToolEnd != nil {

@@ -1,97 +1,68 @@
-# DockCode
+<div align="center">
+  <img src="assets/logo.png" alt="DockCode Logo" width="200" />
+  
+  <h1>DockCode</h1>
+  <p>
+    <b>Chat with Docker in natural language.</b><br>
+    An AI-powered, interactive Terminal UI for effortless container management.
+  </p>
 
-AI-powered Docker management right inside your terminal.
+  <p>
+    <img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white" alt="Go" />
+    <img src="https://img.shields.io/badge/TUI-BubbleTea-FF75B7?style=flat-square" alt="BubbleTea" />
+    <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/github/stars/parmeet20/dockcode?style=flat-square&color=yellow" alt="Stars" />
+  </p>
+</div>
 
-DockCode is a premium, modern Terminal User Interface (TUI) that integrates AI agents
-with your local Docker daemon. Monitor, debug, inspect, and manage containers, images,
-volumes, and networks using natural language — no GUI required.
+<br />
+
+## 📖 Overview
+
+**DockCode** transforms the way you interact with Docker. Stop memorizing complex CLI flags and documentation—simply tell DockCode what you want to achieve in plain English, and watch it orchestrate your containers, images, networks, and volumes in real-time. 
+
+Powered by a robust Go backend and a beautiful Terminal User Interface (TUI), DockCode acts as your personal DevOps assistant. It understands your current Docker state, asks intelligent clarifying questions before executing destructive commands, and supports **any** OpenAI-compatible LLM provider.
 
 ---
 
-## Quick Install
+## 📸 Screenshots
 
-Make sure Go 1.21+ is installed, then run:
+<div align="center">
+  <p><b>✨ Seamless Onboarding</b></p>
+  <img src="assets/onboarding.png" alt="Onboarding Screen" width="700" />
+  <p><i>Connect to any OpenAI-compatible provider in seconds. Just paste your Base URL, API Key, and select your preferred model.</i></p>
+</div>
 
-```
+<br />
+
+<div align="center">
+  <p><b>💬 Intelligent Chat Interface</b></p>
+  <img src="assets/chat.png" alt="Chat Interface" width="700" />
+  <p><i>Manage your infrastructure using natural language with a live, auto-refreshing sidebar of your Docker state.</i></p>
+</div>
+
+---
+
+## 🌟 Features
+
+- 🧠 **Conversational DevOps**: Say *"Spin up a Postgres database with a custom password and map it to port 5432"*, and DockCode handles the complex `docker run` flags automatically.
+- 🌐 **Multi-Provider Support**: Works out-of-the-box with **OpenAI, Groq, Ollama, LM Studio, OpenRouter**, and any OpenAI-compatible API.
+- 🛡️ **Safe & Smart Execution**: DockCode knows when it lacks context. It will pause and explicitly ask you for missing environment variables, specific image tags, or port mappings before executing.
+- 📊 **Live State Sidebar**: An auto-refreshing panel that keeps track of your running Containers, Images, Volumes, and Networks without leaving the chat.
+- 🎨 **Beautiful TUI**: Built with [BubbleTea](https://github.com/charmbracelet/bubbletea) and Lipgloss for a gorgeous, responsive, and native terminal experience.
+- 💾 **Session Memory**: Context-aware sessions that remember your past actions, container names, and preferences. Save, resume, and export your chat history.
+- ⚡ **Production-Grade Engineering**: 
+  - Zero goroutine leaks with strict ownership patterns.
+  - Bounded worker pools for parallel Docker operations.
+  - 3-stage SSE streaming pipeline for buttery-smooth LLM token generation.
+  - Graceful shutdown and context cancellation across all concurrent operations.
+
+---
+
+## 🚀 Installation
+
+### Using Go Install (Recommended)
+If you have Go 1.22+ installed, you can install DockCode globally with a single command:
+
+```bash
 go install github.com/parmeet20/dockcode@latest
-```
-
-**That's it.** On first launch, DockCode automatically and permanently adds
-`%USERPROFILE%\go\bin` (Windows) or `~/go/bin` (macOS/Linux) to your system
-`PATH` — so typing `dockcode` in any new terminal works from that point forward.
-
-> **Windows users (CMD or PowerShell)**
-> After running `go install`, open a **new** CMD or PowerShell window and type:
-> ```
-> dockcode
-> ```
-> The first-run PATH setup writes directly to the Windows Registry
-> (`HKEY_CURRENT_USER\Environment`) and broadcasts a system-wide change
-> notification, so no logout or reboot is needed.
-
-> **macOS / Linux users**
-> The first run appends `export PATH="$PATH:~/go/bin"` to your
-> `.zshrc` / `.bashrc` / `.profile`. Open a new terminal tab and type `dockcode`.
-
----
-
-## Features
-
-- **Natural Language AI** — Ask the agent to inspect logs, stop containers, pull images, prune resources, and more.
-- **Dynamic Sidebar** — Live view of containers, images, volumes, and networks, refreshed in the background.
-- **Session Browser** — Full session history with search. Press `/sessions` to open, `Enter` to switch, `q` to go back.
-- **Rich Slash Commands** — `/newchat`, `/sessions`, `/logs`, `/stop`, `/rm`, `/theme`, and many more.
-- **ASCII Fallbacks** — Works in classic CMD/PowerShell (braille spinners replaced with `-\|/`, emojis replaced with clean ASCII symbols).
-- **Copy / Paste** — Native terminal copy-paste works in every supported terminal.
-
----
-
-## Slash Commands
-
-| Command | Description |
-|---|---|
-| `/help` | Show all available commands |
-| `/exit` | Gracefully exit DockCode |
-| `/clear` | Clear chat and reset session memory |
-| `/newchat` | Start a new chat session |
-| `/sessions` | Open session browser (switch / search past sessions) |
-| `/session rename <title>` | Rename current session |
-| `/session delete` | Delete current session |
-| `/session export` | Export chat to a Markdown file |
-| `/session tag <tag>` | Tag current session |
-| `/settoken <token>` | Set a new API token |
-| `/seturl <url>` | Set a new API base URL |
-| `/model <name>` | Switch the active LLM model |
-| `/models` | List available models |
-| `/config` | Show current configuration |
-| `/theme` | Toggle dark / light theme |
-| `/containers` | Focus containers panel |
-| `/images` | Focus images panel |
-| `/volumes` | Focus volumes panel |
-| `/networks` | Focus networks panel |
-| `/logs <name>` | Stream container logs |
-| `/stop <name>` | Stop a running container |
-| `/rm <name>` | Remove a container |
-
----
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|---|---|
-| `Tab` | Cycle sidebar panels |
-| `↑ / ↓` | Scroll chat or navigate autocomplete |
-| `/` | Open command autocomplete |
-| `Enter` | Send message / confirm command |
-| `q` | Go back from session browser |
-| `Esc` | Dismiss autocomplete or overlays |
-| `Ctrl+C` | Quit DockCode |
-
----
-
-## Configuration
-
-Config is stored at `~/.dockcode/config.json`. It is created automatically
-during the onboarding wizard on first launch.
-
-Sessions are stored under `~/.dockcode/sessions/`.

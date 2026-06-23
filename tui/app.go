@@ -19,8 +19,6 @@ import (
 	"github.com/parmeet20/dockcode/llm"
 )
 
-// ─── View modes ───────────────────────────────────────────────────────────────
-
 type viewMode int
 
 const (
@@ -29,68 +27,43 @@ const (
 	modeSessionDetail
 )
 
-// ─── App model ────────────────────────────────────────────────────────────────
-
-// Model is the root Bubbletea model for the main application.
 type Model struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	// sub-systems
-	cfg        *config.Manager
-	docker     *docker.Client
-	llm        *llm.Client
-	session    *agent.Session
-	sessionIdx *agent.SessionIndex
-	agentInst  *agent.Agent
-	refresher  *SidebarRefresher
-	supervisor *concurrency.Supervisor
-	program    *tea.Program
-
-	// shared atomics
-	agentBusy  atomic.Bool
-	tokenCount atomic.Int64
-
-	// UI components
-	chat         ChatView
-	sidebar      Sidebar
-	statusbar    StatusBar
-	input        textarea.Model
-	autocomplete AutocompleteState
-
-	// auxiliary views
+	ctx            context.Context
+	cancel         context.CancelFunc
+	cfg            *config.Manager
+	docker         *docker.Client
+	llm            *llm.Client
+	session        *agent.Session
+	sessionIdx     *agent.SessionIndex
+	agentInst      *agent.Agent
+	refresher      *SidebarRefresher
+	supervisor     *concurrency.Supervisor
+	program        *tea.Program
+	agentBusy      atomic.Bool
+	tokenCount     atomic.Int64
+	chat           ChatView
+	sidebar        Sidebar
+	statusbar      StatusBar
+	input          textarea.Model
+	autocomplete   AutocompleteState
 	mode           viewMode
 	sessionBrowser SessionBrowserModel
 	sessionDetail  *SessionDetailModel
-
-	// ask_user overlay
-	askMsg    *agent.AskUserMsg
-	askInput  string
-	askOptIdx int
-
-	// layout
-	width  int
-	height int
-
-	// flags
-	dockerAlive  bool
-	agentRunning bool
-	spinner      Spinner
+	askMsg         *agent.AskUserMsg
+	askInput       string
+	askOptIdx      int
+	width          int
+	height         int
+	dockerAlive    bool
+	agentRunning   bool
+	spinner        Spinner
 }
-
-// ─── Init ─────────────────────────────────────────────────────────────────────
-
-// ExitMsg signals graceful shutdown.
 type ExitMsg struct{}
-
-// SpinTickMsg drives spinner updates.
 type SpinTickMsg struct{}
 
 func spinTickCmd() tea.Cmd {
 	return tea.Tick(TickInterval, func(_ time.Time) tea.Msg { return SpinTickMsg{} })
 }
-
-// NewModel constructs the application model after a successful startup.
 func NewModel(
 	ctx context.Context,
 	cancel context.CancelFunc,
@@ -138,10 +111,11 @@ func NewModel(
 		&m.tokenCount,
 	)
 
+	m.chat.SetFocus(true)
+	m.sidebar.SetFocus(false)
+
 	return m
 }
-
-// SetProgram stores the program reference and wires it to sub-systems.
 func (m *Model) SetProgram(p *tea.Program) {
 	m.program = p
 	m.agentInst.SetProgram(p)
@@ -157,27 +131,19 @@ func (m *Model) Init() tea.Cmd {
 	)
 }
 
-// ─── Update ───────────────────────────────────────────────────────────────────
-
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-
-	// ── Window resize
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		m.relayout()
-
-	// ── Spinner ticks
 	case SpinTickMsg:
 		m.spinner.Tick()
 		m.statusbar.Update(m.tokenCount.Load(), m.dockerAlive, m.agentRunning)
 		m.chat.TickThinking()
 		cmds = append(cmds, spinTickCmd())
-
-	// ── Agent streaming
 	case agent.AgentChunkMsg:
 		m.chat.AppendStream(msg.Text)
 
@@ -211,21 +177,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.askMsg = &msg
 		m.askInput = ""
 		m.askOptIdx = 0
-
-	// ── Sidebar refresh
 	case agent.SidebarRefreshMsg:
 		m.sidebar.Update(msg)
 		m.dockerAlive = true
-
-	// ── LLM retry info
 	case llm.RetryMsg:
 		if msg.Error {
 			m.chat.AddMessage(KindError, msg.Message)
 		} else {
 			m.chat.AddMessage(KindInfo, msg.Message)
 		}
-
-	// ── Session browser
 	case SessionBrowserMsg:
 		m.mode = modeChat
 		if msg.SessionID == "new" {
@@ -291,28 +251,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SessionDetailOpenMsg:
 		m.mode = modeChat
-
-	// ── Exit
 	case ExitMsg:
 		return m, m.shutdownCmd()
-
-	// ── Keyboard input
 	case tea.KeyMsg:
 		cmd, handled := m.handleKey(msg)
 		if handled {
 			return m, cmd
 		}
 	}
-
-	// Pass input events to textarea
 	if m.mode == modeChat && m.askMsg == nil {
+		if _, ok := msg.(tea.KeyMsg); ok {
+			m.chat.SetFocus(true)
+			m.sidebar.SetFocus(false)
+		}
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
 		cmds = append(cmds, cmd)
 		m.autocomplete.Update(m.input.Value())
 	}
-
-	// Pass events to browser/detail
 	if m.mode == modeSessionBrowser {
 		newBrowser, cmd := m.sessionBrowser.Update(msg)
 		if sb, ok := newBrowser.(SessionBrowserModel); ok {
@@ -325,13 +281,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
-	// ask_user overlay key handling
 	if m.askMsg != nil {
 		_, resCmd := m.handleAskUserKey(msg)
 		return resCmd, true
 	}
-
-	// Session browser key handling
 	if m.mode == modeSessionBrowser {
 		newBrowser, cmd := m.sessionBrowser.Update(msg)
 		if sb, ok := newBrowser.(SessionBrowserModel); ok {
@@ -355,19 +308,29 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 		}
 		next := (int(m.sidebar.activePanel) + 1) % 4
 		m.sidebar.SetPanel(SidebarPanel(next))
+		m.sidebar.SetFocus(true)
+		m.chat.SetFocus(false)
 		return nil, true
 
-	case "1":
+	case "alt+1", "f1":
 		m.sidebar.SetPanel(PanelContainers)
+		m.sidebar.SetFocus(true)
+		m.chat.SetFocus(false)
 		return nil, true
-	case "2":
+	case "alt+2", "f2":
 		m.sidebar.SetPanel(PanelImages)
+		m.sidebar.SetFocus(true)
+		m.chat.SetFocus(false)
 		return nil, true
-	case "3":
+	case "alt+3", "f3":
 		m.sidebar.SetPanel(PanelVolumes)
+		m.sidebar.SetFocus(true)
+		m.chat.SetFocus(false)
 		return nil, true
-	case "4":
+	case "alt+4", "f4":
 		m.sidebar.SetPanel(PanelNetworks)
+		m.sidebar.SetFocus(true)
+		m.chat.SetFocus(false)
 		return nil, true
 
 	case "up":
@@ -376,6 +339,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 			return nil, true
 		}
 		m.chat.ScrollUp()
+		m.chat.SetFocus(true)
+		m.sidebar.SetFocus(false)
 		return nil, true
 	case "down":
 		if m.autocomplete.Visible {
@@ -383,6 +348,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 			return nil, true
 		}
 		m.chat.ScrollDown()
+		m.chat.SetFocus(true)
+		m.sidebar.SetFocus(false)
 		return nil, true
 
 	case "esc":
@@ -390,8 +357,6 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 			m.autocomplete.Hide()
 			return nil, true
 		}
-
-	// Autocomplete navigation
 	case "ctrl+p":
 		if m.autocomplete.Visible {
 			m.autocomplete.MoveUp()
@@ -412,6 +377,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 				return nil, true
 			}
 		}
+		m.chat.SetFocus(true)
+		m.sidebar.SetFocus(false)
 		_, resCmd := m.submitInput()
 		return resCmd, true
 	}
@@ -426,13 +393,9 @@ func (m *Model) submitInput() (tea.Model, tea.Cmd) {
 	}
 	m.input.SetValue("")
 	m.autocomplete.Hide()
-
-	// Handle slash commands
 	if strings.HasPrefix(raw, "/") {
 		return m.handleSlashCommand(raw)
 	}
-
-	// Normal message → agent
 	if m.agentRunning {
 		m.chat.AddMessage(KindInfo, "Agent is busy, please wait…")
 		return m, nil
@@ -521,8 +484,6 @@ func (m *Model) handleSlashCommand(raw string) (tea.Model, tea.Cmd) {
 		} else {
 			m.chat.AddMessage(KindUser, fmt.Sprintf("/logs %s", arg))
 			m.chat.AddMessage(KindToolStart, fmt.Sprintf("docker_logs %s", arg))
-
-			// Direct Docker Client fallback call so it works without LLM
 			return m, func() tea.Msg {
 				ctx, cancel := context.WithTimeout(m.ctx, 10*time.Second)
 				defer cancel()
@@ -540,8 +501,6 @@ func (m *Model) handleSlashCommand(raw string) (tea.Model, tea.Cmd) {
 		} else {
 			m.chat.AddMessage(KindUser, fmt.Sprintf("/stop %s", arg))
 			m.chat.AddMessage(KindToolStart, fmt.Sprintf("docker_stop %s", arg))
-
-			// Direct Docker Client fallback call so it works without LLM
 			return m, func() tea.Msg {
 				ctx, cancel := context.WithTimeout(m.ctx, 15*time.Second)
 				defer cancel()
@@ -559,8 +518,6 @@ func (m *Model) handleSlashCommand(raw string) (tea.Model, tea.Cmd) {
 		} else {
 			m.chat.AddMessage(KindUser, fmt.Sprintf("/rm %s", arg))
 			m.chat.AddMessage(KindToolStart, fmt.Sprintf("docker_rm %s", arg))
-
-			// Direct Docker Client fallback call so it works without LLM
 			return m, func() tea.Msg {
 				ctx, cancel := context.WithTimeout(m.ctx, 15*time.Second)
 				defer cancel()
@@ -772,8 +729,6 @@ func (m *Model) handleAskUserKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-
-// shutdownCmd performs graceful shutdown steps.
 func (m *Model) shutdownCmd() tea.Cmd {
 	return func() tea.Msg {
 		m.agentInst.Stop()
@@ -786,8 +741,6 @@ func (m *Model) shutdownCmd() tea.Cmd {
 		return tea.Quit()
 	}
 }
-
-// ─── View ─────────────────────────────────────────────────────────────────────
 
 func (m *Model) View() string {
 	if m.width == 0 {
@@ -802,20 +755,14 @@ func (m *Model) View() string {
 			return m.sessionDetail.View()
 		}
 	}
-
-	// Main layout
 	statusLine := m.statusbar.View()
 	chatArea := m.chat.View()
 	sidebarArea := m.sidebar.View()
 	inputArea := m.renderInput()
 	keyhelp := m.renderKeyHelp()
-
-	// Ask-user overlay
 	if m.askMsg != nil {
 		chatArea = m.renderAskUserOverlay()
 	}
-
-	// Autocomplete above input
 	acDropdown := ""
 	if m.autocomplete.Visible {
 		acDropdown = m.autocomplete.View(m.chatWidth()) + "\n"
@@ -860,7 +807,7 @@ func (m *Model) renderAskUserOverlay() string {
 	if len(ask.Options) > 0 {
 		for i, opt := range ask.Options {
 			if i == m.askOptIdx {
-				sb.WriteString(StylePrimary.Render("▸ " + opt))
+				sb.WriteString(StyleDim.Render("▸ " + opt))
 				sb.WriteString("\n")
 			} else {
 				sb.WriteString(StyleDim.Render("  " + opt))
@@ -872,7 +819,7 @@ func (m *Model) renderAskUserOverlay() string {
 	} else {
 		sb.WriteString(StyleDim.Render("Type your answer: "))
 		sb.WriteString(m.askInput)
-		sb.WriteString(StylePrimary.Render("█"))
+		sb.WriteString(StyleDim.Render("█"))
 		sb.WriteString("\n")
 		sb.WriteString(StyleDim.Render("Enter to confirm"))
 	}
@@ -885,8 +832,6 @@ func (m *Model) renderAskUserOverlay() string {
 		Height(m.chatHeight() - 2).
 		Render(sb.String())
 }
-
-// ─── Layout helpers ───────────────────────────────────────────────────────────
 
 func (m *Model) relayout() {
 	sidebarW := m.width * 30 / 100
@@ -910,8 +855,6 @@ func (m *Model) chatWidth() int {
 func (m *Model) chatHeight() int {
 	return m.height - 8
 }
-
-// SessionsBaseDir returns the path to the sessions directory.
 func SessionsBaseDir() string {
 	return filepath.Join("~", ".dockcode", "sessions")
 }
